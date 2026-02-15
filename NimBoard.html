@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NimBoard - Strategy Game</title>
+    <style>
+        :root {
+            --primary: #e94560;
+            --secondary: #0f3460;
+            --bg: #1a1a2e;
+            --panel: #16213e;
+            --text: #ffffff;
+            --accent: #4ecca3;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 600px; width: 100%; text-align: center; flex: 1; }
+
+        .how-to-play-box {
+            background: var(--panel);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            text-align: left;
+            border-left: 5px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .how-to-play-box h2 { margin-top: 0; color: var(--primary); font-size: 1.3rem; }
+        .how-to-play-box p { font-size: 0.9rem; line-height: 1.4; color: #cbd5e0; }
+
+        h1 { font-size: 3rem; color: var(--primary); margin: 20px 0; text-transform: uppercase; letter-spacing: 6px; }
+
+        .difficulty-selector { display: flex; justify-content: center; gap: 10px; margin-bottom: 25px; }
+        .diff-btn {
+            padding: 8px 18px;
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .diff-btn.active { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
+
+        #status { font-size: 1.3rem; font-weight: bold; margin-bottom: 15px; color: var(--accent); height: 35px; }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 15px;
+            background: var(--secondary);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 0 auto;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: var(--panel);
+            border: 3px solid var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .cell:hover:not(.empty) { transform: translateY(-3px); background: #1f4068; }
+        .cell.selected { background: var(--primary); box-shadow: 0 0 20px var(--primary); }
+        .cell.empty { border-color: #333; color: #444; cursor: default; }
+
+        .controls { margin-top: 30px; min-height: 60px; display: flex; justify-content: center; gap: 12px; }
+        .action-btn {
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        footer { 
+            margin-top: 50px; 
+            padding: 20px; 
+            font-size: 0.9rem; 
+            color: #777; 
+            border-top: 1px solid #333; 
+            width: 100%; 
+            text-align: center;
+        }
+        footer strong { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="how-to-play-box">
+            <h2>Strategy Guide</h2>
+            <p><strong>The Goal:</strong> Force the AI to take the last point. If you leave exactly 1 point on the board at the end of your turn, you win!</p>
+            <p><strong>Instructions:</strong> Select a cell, then use the buttons to subtract points.</p>
+        </div>
+
+        <h1>NIMBOARD</h1>
+
+        <div class="difficulty-selector">
+            <button class="diff-btn active" onclick="setDiff('rookie', this)">ROOKIE</button>
+            <button class="diff-btn" onclick="setDiff('veteran', this)">VETERAN</button>
+            <button class="diff-btn" onclick="setDiff('master', this)">MASTER</button>
+        </div>
+
+        <div id="status">Your Turn</div>
+        <div class="board" id="board"></div>
+        <div class="controls" id="controls"></div>
+    </div>
+
+    <footer>
+        NimBoard Strategy Game | Created by <strong>Xavi Tarragó</strong>
+    </footer>
+
+    <script>
+        let board = [];
+        let currentPlayer = 1; 
+        let selectedCell = null;
+        let gameOver = false;
+        let difficulty = 'rookie';
+
+        function setDiff(lvl, btn) {
+            difficulty = lvl;
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            initGame();
+        }
+
+        function initGame() {
+            gameOver = false;
+            selectedCell = null;
+            currentPlayer = 1;
+            board = Array(3).fill().map(() => Array(3).fill().map(() => Math.floor(Math.random() * 5) + 1));
+            render();
+            updateStatus("Your Turn");
+        }
+
+        function getSum() { return board.flat().reduce((a, b) => a + b, 0); }
+        function updateStatus(msg) { document.getElementById('status').innerText = msg; }
+
+        function render() {
+            const boardDiv = document.getElementById('board');
+            boardDiv.innerHTML = '';
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 3; c++) {
+                    const cell = document.createElement('div');
+                    const val = board[r][c];
+                    cell.className = `cell ${val === 0 ? 'empty' : ''} ${selectedCell?.r === r && selectedCell?.c === c ? 'selected' : ''}`;
+                    cell.innerText = val > 0 ? val : "";
+                    cell.onclick = () => selectCell(r, c);
+                    boardDiv.appendChild(cell);
+                }
+            }
+        }
+
+        function selectCell(r, c) {
+            if (gameOver || currentPlayer === 2 || board[r][c] === 0) return;
+            selectedCell = {r, c};
+            render();
+            const container = document.getElementById('controls');
+            container.innerHTML = '';
+            for (let i = 1; i <= board[r][c]; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.innerText = `Subtract ${i}`;
+                btn.onclick = () => makeMove(i);
+                container.appendChild(btn);
+            }
+        }
+
+        function makeMove(amount) {
+            board[selectedCell.r][selectedCell.c] -= amount;
+            selectedCell = null;
+            document.getElementById('controls').innerHTML = '';
+            if (checkEnd()) return;
+            currentPlayer = 2;
+            render();
+            updateStatus("AI is thinking...");
+            setTimeout(botMove, 1000);
+        }
+
+        function botMove() {
+            let moves = [];
+            for(let r=0; r<3; r++) {
+                for(let c=0; c<3; c++) {
+                    if(board[r][c] > 0) {
+                        for(let v=1; v<=board[r][c]; v++) moves.push({r, c, v});
+                    }
+                }
+            }
+            let chosen = null;
+            let winMove = moves.find(m => (getSum() - m.v) === 1);
+            let perfect = moves.find(m => {
+                let temp = board.flat();
+                temp[m.r * 3 + m.c] -= m.v;
+                return temp.reduce((acc, val) => acc ^ val, 0) === 0;
+            });
+            if (difficulty === 'rookie') chosen = moves[Math.floor(Math.random() * moves.length)];
+            else if (difficulty === 'veteran' && Math.random() < 0.3) chosen = moves[Math.floor(Math.random() * moves.length)];
+            else chosen = winMove || perfect || moves[Math.floor(Math.random() * moves.length)];
+            board[chosen.r][chosen.c] -= chosen.v;
+            render();
+            if (checkEnd()) return;
+            currentPlayer = 1;
+            updateStatus("Your Turn");
+        }
+
+        function checkEnd() {
+            const s = getSum();
+            if (s <= 1) {
+                gameOver = true;
+                if (s === 1) updateStatus(currentPlayer === 1 ? "VICTORY!" : "AI WINS!");
+                else updateStatus(currentPlayer === 1 ? "DEFEAT (Empty)" : "AI LOST");
+                const btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.innerText = "PLAY AGAIN";
+                btn.onclick = initGame;
+                document.getElementById('controls').innerHTML = '';
+                document.getElementById('controls').appendChild(btn);
+                return true;
+            }
+            return false;
+        }
+        initGame();
+    </script>
+</body>
+</html>
